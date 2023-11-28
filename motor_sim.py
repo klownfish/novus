@@ -45,7 +45,7 @@ C_STAR_EFFICIENCY = 0.95      # Ratio between actual and theoretical
 
 DIA_THROAT = 0.02           # nozzle throat diameter (m)
 NOZZLE_EFFICIENCY = 0.97      # factor by which to reduce thrust coefficient
-NOZZLE_AREA_RATIO = 0.07 / DIA_THROAT       # ratio of nozzle exit area to throat area
+NOZZLE_AREA_RATIO = 3.5       # ratio of nozzle exit area to throat area
 
 DIA_FEED = 0.01               # feed pipe diameter (m)
 LENGTH_FEED = 0.2             # feed pipe length (m)
@@ -61,7 +61,7 @@ REG_EXP = 0.331		          # regression rate exponent (usually 'n' in
                               #                           textbooks)
 
 PRES_EXTERNAL = 101325        # external atmospheric pressure at test site (Pa)
-temp = 15 + 273.15            # initial tank temperature (K)
+temp = 25 + 273.15            # initial tank temperature (K)
 
 
 
