@@ -30,46 +30,38 @@ import hybrid_functions as motor
 # Input parameters
 ###############################################################################
 
-VOL_TANK = 60 * 0.001         # tank volume (m^3)
-HEAD_SPACE = 0.1              # initial vapour phase proportion
+VOL_TANK = 0.047 ** 2 * 3.14 * 0.7 # tank volume (m^3)
+HEAD_SPACE = 0.15              # initial vapour phase proportion
 
-# primary injectory orifices were drilled by shaped machining
-NUM_INJ1 = 40                 # number of primary injector orifices
-DIA_INJ1 = 0.0013             # diameter of primary injector orifices (m)
+# Number of injector orifices
+NUM_INJ = 12                 # number of primary injector orifices
+DIA_INJ = 0.0015             # diameter of primary injector orifices (m)
 
-# secondary injector orifices were drilled prior to first test
-NUM_INJ2 = 4                  # number of secondary injector orifices
-DIA_INJ2 = 0.002              # diameter of secondary injector orifices (m)
-
-# tertiary injectory orifices are new orifices to be drilled
-NUM_INJ3 = 8                  # number of tertiary injector orifices
-DIA_INJ3 = 0.0015             # diameter of tertiary injector orifices (m)
-
-DIA_PORT = 0.075              # diameter of fuel port (m)
-LENGTH_PORT = 1.33            # length of fuel port (m)
-DIA_FUEL = 0.112              # Outside diameter of fuel grain (m)
+DIA_PORT = 0.04              # diameter of fuel port (m)
+LENGTH_PORT = 0.7            # length of fuel port (m)
+DIA_FUEL = 0.07              # Outside diameter of fuel grain (m)
 C_STAR_EFFICIENCY = 0.95      # Ratio between actual and theoretical
                               # characteristic velocity
 
-DIA_THROAT = 0.0432           # nozzle throat diameter (m)
+DIA_THROAT = 0.02           # nozzle throat diameter (m)
 NOZZLE_EFFICIENCY = 0.97      # factor by which to reduce thrust coefficient
-NOZZLE_AREA_RATIO = 4.5       # ratio of nozzle exit area to throat area
+NOZZLE_AREA_RATIO = 0.07 / DIA_THROAT       # ratio of nozzle exit area to throat area
 
-DIA_FEED = 0.02               # feed pipe diameter (m)
-LENGTH_FEED = 0.5             # feed pipe length (m)
+DIA_FEED = 0.01               # feed pipe diameter (m)
+LENGTH_FEED = 0.2             # feed pipe length (m)
 VALVE_MODEL_TYPE = 'ball'     # either 'kv' or 'ball' (models as thick orifice)
 KV_VALVE = 5                  # used if VALVE_MODEL_TRY='kv'
 DIA_VALVE = 0.015             # used if VALVE_MODEL_TRY='ball'
 LENGTH_VALVE = 0.08           # used if VALVE_MODEL_TRY='ball'
 
-DENSITY_FUEL = 935            # solid fuel density (kg m^-3)
+DENSITY_FUEL = 1000            # solid fuel density (kg m^-3)
 REG_COEFF = 1.157E-4	      # regression rate coefficient (usually 'a' in
                               #                              textbooks)
 REG_EXP = 0.331		          # regression rate exponent (usually 'n' in
                               #                           textbooks)
 
 PRES_EXTERNAL = 101325        # external atmospheric pressure at test site (Pa)
-temp = 20 + 273.15            # initial tank temperature (K)
+temp = 15 + 273.15            # initial tank temperature (K)
 
 
 
@@ -134,12 +126,15 @@ tmass = lmass + vmass
     nozzle_efficiency_data,
     exit_pressure_data,
     area_ratio_data,
+    of_data,
+    regression_data,
+    port_diameter_data,
 
     # additional properties needed for the 6DOF simulation
     vden_data, vmass_data,
     lden_data, lmass_data,
     fuel_mass_data
-) = [[] for _ in range(17)]
+) = [[] for _ in range(20)]
 
 # print initial conditions
 print(f"""
@@ -199,23 +194,10 @@ while True:
     if blowdown_type == 'liquid':
         # liquid phase blowdown
 
-        mdotox1 = NUM_INJ1 * motor.dyer_injector(
-            pres_cham, DIA_INJ1, lden, inj_pdrop,
+        mdotox = NUM_INJ * motor.dyer_injector(
+            pres_cham, DIA_INJ, lden, inj_pdrop,
             hl, manifold_pres, vap_pres
         )
-
-        mdotox2 = NUM_INJ2 * motor.dyer_injector(
-            pres_cham, DIA_INJ2, lden, inj_pdrop,
-            hl, manifold_pres, vap_pres
-        )
-
-        mdotox3 = NUM_INJ3 * motor.dyer_injector(
-            pres_cham, DIA_INJ3, lden, inj_pdrop,
-            hl, manifold_pres, vap_pres
-        )
-
-        # sum flow from 3 types of orifice
-        mdotox = mdotox1 + mdotox2 + mdotox3
 
         # find new mass of tank contents after outflow
         tmass -= mdotox * dt
@@ -258,10 +240,7 @@ while True:
         # vapour phase blowdown
 
         # calculations for injector orifices
-        mdotox1 = NUM_INJ1 * motor.vapour_injector(DIA_INJ1, vden, inj_pdrop)
-        mdotox2 = NUM_INJ2 * motor.vapour_injector(DIA_INJ2, vden, inj_pdrop)
-        mdotox3 = NUM_INJ3 * motor.vapour_injector(DIA_INJ3, vden, inj_pdrop)
-        mdotox = mdotox1 + mdotox2 + mdotox3
+        mdotox = NUM_INJ * motor.vapour_injector(DIA_INJ, vden, inj_pdrop)
         vmass -= dt * mdotox  # sum flow from 3 types of orifice
 
         # find current tank vapour parameters
@@ -273,14 +252,14 @@ while True:
             break
 
         #isentropic assumption
-        temp = temp_ld * pow(Z2 * vmass / (Z_ld * vmass_ld), gamma_N2O-1) 
+        temp = temp_ld * pow(Z2 * vmass / (Z_ld * vmass_ld), gamma_N2O-1)
         vap_pres = vap_pres_ld * pow(temp / temp_ld, gamma_N2O / (gamma_N2O-1))
         vden = vden_ld * pow(temp / temp_ld, 1 / (gamma_N2O-1))
 
     # check for excessive mass flux
     if mdotox / port.A > 600:
         print(f'Failure: oxidizer flux too high: {mdotox / port.A:.2f}')
-        break
+        # break
 
     # fuel port calculation
     rdot = REG_COEFF * pow(mdotox/port.A, REG_EXP)
@@ -305,6 +284,7 @@ while True:
 
     # lookup ratio of specific heats from propep data file
     gamma = motor.gamma_lookup(pres_cham, mdotox/mdotfuel, propep_data)
+
 
     # performance calculations
     # find nozzle exit static pressure
@@ -335,6 +315,9 @@ while True:
     nozzle_efficiency_data.append(NOZZLE_EFFICIENCY)
     exit_pressure_data.append(pres_exit)
     area_ratio_data.append(NOZZLE_AREA_RATIO)
+    of_data.append(mdotox/mdotfuel)
+    regression_data.append(rdot)
+    port_diameter_data.append(port.d)
 
     #additional data for the 6DOF simulation
     vmass_data.append(vmass)
@@ -352,7 +335,7 @@ while True:
 #print final results
 print("\nFinal conditions:\ntime:", time, "s\ntank temperature:", temp-273.15,
       "C\nlmass:", lmass, "kg\nvmass:", vmass, "kg\nvap_pres:", vap_pres,
-      'Pa\nfuel thickness:', (DIA_FUEL-DIA_PORT)/2, 'm\nfuel mass', fuel_mass,
+      'Pa\nfuel thickness:', (DIA_FUEL-port.d)/2, 'm\nfuel mass', fuel_mass,
       'kg')
 
 impulse = dt * sum(thrust_data[:len(time_data)])
@@ -360,6 +343,12 @@ impulse = dt * sum(thrust_data[:len(time_data)])
 print('\nPerformance results:\nInitial thrust:', thrust_data[int(0.5/dt)],
       'N\nmean thrust:', np.mean(thrust_data), 'N\nimpulse:', impulse,
       'Ns\nmean Isp:', impulse/(prop_mass_data[0]-fuel_mass)/9.81)
+print(
+f"""\n Midburn Results:
+O/F: {of_data[len(of_data) // 2]})
+Regression: {regression_data[len(regression_data) // 2]}
+Pressure margin: {np.min( ( np.array(manifold_pres_data) - np.array(pres_cham_data) ) / np.array(pres_cham_data) )}
+""")
 
 #plot pressures
 plt.figure(figsize=(8.5, 7))
@@ -390,12 +379,12 @@ plt.ylabel('Oxidizer mass flux ($kg s^{-1} m^{-2}$)')
 plt.ylim(0, max(gox_data)*1.3)
 plt.tight_layout()
 
-#plot mass of propellant
+#plot O/F
 plt.subplot(224)
-plt.plot(time_data, prop_mass_data, 'C2')
+plt.plot(time_data, of_data, 'C2')
 plt.xlabel('Time (s)')
-plt.ylabel('Propellant mass (kg)')
-plt.ylim(0, max(prop_mass_data)*1.3)
+plt.ylabel('O/F Ratio')
+plt.ylim(0, max(of_data)*1.3)
 plt.tight_layout()
 
 plt.show()
@@ -458,7 +447,7 @@ with open("hybrid.eng", "w+") as rasp_file:
     rasp_file.write(f'Pulsar {RASP_DIA} {RASP_LENGTH} P'
                     f' {prop_mass_data[0]:.2f}'
                     f' {prop_mass_data[0] + RASP_DRY:.2f} CUSF\n')
-    
+
     for i in range(31):
         t = int(i * len(time_data) / 31)
         rasp_file.write(
@@ -466,4 +455,3 @@ with open("hybrid.eng", "w+") as rasp_file:
 
     rasp_file.write(f'\t{float(time_data[-1]):.2f} 0.0\n')
     rasp_file.write(';')
-

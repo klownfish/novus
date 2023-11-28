@@ -30,11 +30,11 @@ import matplotlib.pyplot as plt
 # Input parameters
 ###############################################################################
 
-MASS_DRY = 60                     #rocket dry mass (kg)
-DIAMETER = 0.197                  #rocket body DIAMETER (m)
-LAUNCH_ALT = 615                    #launch altitude (msl)
-ANGLE_RAIL = 89                   #launch rail angle, degrees
-LENGTH_RAIL = 11                  #launch rail length (m)
+MASS_DRY = 15                     #rocket dry mass (kg)
+DIAMETER = 0.12                  #rocket body DIAMETER (m)
+LAUNCH_ALT = 180                    #launch altitude (msl)
+ANGLE_RAIL = 85                   #launch rail angle, degrees
+LENGTH_RAIL = 12                  #launch rail length (m)
 
 vvel = 0                          #initial rocket vertical velocity (m s^-1)
 hvel = 0                          #initial rocket horizontal velocity (m s^-1)
